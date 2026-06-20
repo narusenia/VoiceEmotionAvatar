@@ -14,9 +14,17 @@ from vea.smoother import EmotionSmoother
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _print_banner():
+    print("=" * 50)
+    print("  VoiceEmotionAvatar (VEA)")
+    print("  Voice → Emotion → OSC → VRChat")
+    print("=" * 50)
+    print()
 
 
 class VeaApp:
@@ -44,13 +52,17 @@ class VeaApp:
         self._silence_threshold = self._config.emotion.silence_threshold
 
     def _load_model(self) -> bool:
+        if self._recognizer._model is not None:
+            return True
         try:
             self._gui.show_info("Loading model...")
+            logger.info("モデルロード開始...")
             self._recognizer.load_model()
-            self._gui.show_info("Model loaded")
+            self._gui.show_info("Model loaded - Ready!")
+            logger.info("準備完了！")
             return True
         except Exception as e:
-            logger.error("Failed to load model: %s", e)
+            logger.error("モデルロード失敗: %s", e)
             self._gui.show_error(f"モデルの読み込みに失敗しました:\n{e}")
             return False
 
@@ -82,11 +94,16 @@ class VeaApp:
         if not self._load_model():
             return
         self._osc.connect()
+        logger.info("OSC接続: %s:%d", self._config.osc.ip, self._config.osc.port)
         if not self._audio.start():
             self._gui.show_info("Waiting for microphone...")
+            logger.info("マイク接続待ち...")
+        else:
+            logger.info("マイク接続OK")
         self._pipeline_running = True
         self._worker_thread = threading.Thread(target=self._pipeline_loop, daemon=True)
         self._worker_thread.start()
+        logger.info("パイプライン開始 (%.0fms間隔)", self._config.emotion.analysis_interval_ms)
 
     def _stop_pipeline(self) -> None:
         self._pipeline_running = False
@@ -96,6 +113,7 @@ class VeaApp:
         self._audio.stop()
         self._osc.close()
         self._smoother.reset()
+        logger.info("パイプライン停止")
 
     def _on_device_change(self, device_id: int | None) -> None:
         self._config.audio.device = device_id
@@ -157,7 +175,10 @@ class VeaApp:
 
 
 def main():
+    _print_banner()
+    logger.info("設定ファイル読み込み中...")
     app = VeaApp()
+    logger.info("GUI起動中...")
     app.run()
 
 

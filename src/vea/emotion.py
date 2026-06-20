@@ -50,10 +50,11 @@ class EmotionRecognizer:
         self._model = None
 
     def load_model(self) -> None:
+        logger.info("FunASR をインポート中...")
         from funasr import AutoModel
-        logger.info("Loading emotion2vec model: %s", MODEL_ID)
+        logger.info("emotion2vec モデルをロード中: %s (初回はダウンロードが入ります)", MODEL_ID)
         self._model = AutoModel(model=MODEL_ID, disable_update=True)
-        logger.info("Model loaded successfully")
+        logger.info("モデルロード完了 - 推論準備OK")
 
     def predict(self, audio_chunk: np.ndarray, sample_rate: int = 16000) -> dict[str, float]:
         if self._model is None:
