@@ -1,6 +1,7 @@
 """Emotion recognition module using emotion2vec."""
 
 import logging
+import os
 import tempfile
 import wave
 
@@ -10,14 +11,6 @@ logger = logging.getLogger(__name__)
 
 MODEL_ID = "iic/emotion2vec_plus_large"
 
-# emotion2vec outputs 9 labels:
-# 0:angry 1:disgusted 2:fearful 3:happy 4:neutral 5:other 6:sad 7:surprised 8:unknown
-EMOTION_LABELS_9 = [
-    "angry", "disgusted", "fearful", "happy", "neutral",
-    "other", "sad", "surprised", "unknown",
-]
-
-# VEA 5-emotion mapping from emotion2vec's 9 labels
 VEA_EMOTIONS = ["joy", "anger", "sadness", "surprise", "neutral"]
 
 LABEL_TO_VEA = {
@@ -48,6 +41,7 @@ def _map_scores_to_vea(labels: list[str], scores: list[float]) -> dict[str, floa
 class EmotionRecognizer:
     def __init__(self):
         self._model = None
+        self._log_count = 0
 
     def load_model(self) -> None:
         logger.info("FunASR をインポート中...")
@@ -56,6 +50,17 @@ class EmotionRecognizer:
         self._model = AutoModel(model=MODEL_ID, disable_update=True)
         logger.info("モデルロード完了 - 推論準備OK")
 
+    def _write_wav(self, audio_chunk: np.ndarray, sample_rate: int) -> str:
+        fd, tmp_path = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        with wave.open(tmp_path, "w") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            pcm = (audio_chunk * 32767).astype(np.int16)
+            wf.writeframes(pcm.tobytes())
+        return tmp_path
+
     def predict(self, audio_chunk: np.ndarray, sample_rate: int = 16000) -> dict[str, float]:
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
@@ -63,14 +68,7 @@ class EmotionRecognizer:
         if np.max(np.abs(audio_chunk)) < 1e-6:
             return {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
 
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp_path = tmp.name
-            with wave.open(tmp_path, "w") as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(sample_rate)
-                pcm = (audio_chunk * 32767).astype(np.int16)
-                wf.writeframes(pcm.tobytes())
+        tmp_path = self._write_wav(audio_chunk, sample_rate)
 
         try:
             res = self._model.generate(
@@ -82,15 +80,27 @@ class EmotionRecognizer:
             logger.error("Emotion prediction failed: %s", e)
             return {e_name: (1.0 if e_name == "neutral" else 0.0) for e_name in VEA_EMOTIONS}
         finally:
-            import os
             try:
                 os.unlink(tmp_path)
             except OSError:
                 pass
 
+        self._log_count += 1
+        if self._log_count <= 5 or self._log_count % 20 == 0:
+            logger.info("Model raw output: %s", res)
+
         if not res or not res[0].get("labels"):
+            if not res:
+                logger.warning("Model returned empty result")
+            elif res and not res[0].get("labels"):
+                logger.warning("Model result has no 'labels' key. Keys: %s", list(res[0].keys()))
             return {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
 
         labels = res[0]["labels"]
         scores = res[0]["scores"]
+
+        if self._log_count <= 5:
+            logger.info("Labels: %s", labels)
+            logger.info("Scores: %s", [f"{s:.3f}" for s in scores])
+
         return _map_scores_to_vea(labels, scores)
