@@ -71,9 +71,10 @@ FX Animator Controller に `VEA_Emotions` レイヤーを追加し、Direct Blen
 
 `unity/Editor/` にエディタツールが同梱されている。Unity プロジェクトの `Assets/VEA/Editor/` にコピーして使う。
 
-- **Tools → VEA → Setup Avatar**: Expression Parameters と FX レイヤーの自動セットアップ
+- **Tools → VEA → Setup with Modular Avatar** (推奨): MA Merge Animator で非破壊セットアップ。Face-Emo 等と干渉しない
+- **Tools → VEA → Setup Avatar**: Expression Parameters と FX レイヤーの直接セットアップ（MA未使用時）
 - **Tools → VEA → BlendShape Editor**: 各感情のアニメーションクリップを GUI で編集
-- **Tools → VEA → Debug Test**: Animator を経由せず BlendShape を直接テスト、テスト用 FX への差し替え
+- **Tools → VEA → Debug Test**: BlendShape 直接テスト、テスト用 FX への差し替え
 
 ### OSC 有効化
 
@@ -90,22 +91,58 @@ VRChat 内で Action Menu → Options → OSC → Enabled。
 4. **Start / Stop**: パイプラインの開始・停止
 5. **Emotion Monitor**: 5感情の確率をリアルタイム表示
 
-### モード
+### Instant Mode
 
-- **Smooth Mode** (デフォルト): Lerp + ヒステリシスで滑らかに表情遷移
-  - Lerp Speed: 遷移の速さ
-  - Hysteresis: 感情切替の閾値（チャタリング防止）
-- **Instant Mode**: 閾値を超えた感情に即座に切替
-  - Instant Threshold: 切替に必要な確率の閾値
-  - Smoothing: 0=キレキレ（即座）、1=なめらか（ゆっくりフェード）
+チェックを入れると、最も確率の高い感情が閾値を超えた場合にその感情を 1.0、他を 0.0 にする即時切替モードになる。チェックを外すと Smooth Mode（後述）で動作する。
+
+| パラメータ | 範囲 | デフォルト | 説明 |
+|---|---|---|---|
+| Instant Threshold | 0.1〜0.9 | 0.4 | この確率を超えた感情に切り替わる。低いと敏感に反応、高いとはっきり喋らないと切り替わらない |
+| Smoothing | 0.0〜1.0 | 0.5 | 切替時のフェード量。0=パッと即座に切替、1=ゆっくりフェードして切替 |
+
+### Settings (Smooth Mode)
+
+Instant Mode が OFF の時に使われる設定。全感情の確率をそのまま Lerp 補間してブレンドするモード。
+
+| パラメータ | 範囲 | デフォルト | 説明 |
+|---|---|---|---|
+| Lerp Speed | 0.01〜1.0 | 0.15 | 毎フレームの補間率。高いほど目標値に速く追従する。0.01だと非常にゆっくり、1.0だと即座に追従 |
+| Hysteresis | 0.0〜0.5 | 0.10 | 感情の切替に必要な確率差。現在の感情より新しい感情がこの値以上高くないと切り替わらない。チャタリング（表情がパタパタ切り替わる現象）を防ぐ |
+| Silence Threshold | 0.001〜0.1 | 0.01 | 入力音量（RMS）がこの値未満のとき無音と判定し、ニュートラルにフォールバックする。環境ノイズが多い場合は上げる |
+
+### Input
+
+| パラメータ | 範囲 | デフォルト | 説明 |
+|---|---|---|---|
+| Input Gain | 0.1〜10.0 | 1.0 | マイク入力の増幅倍率。マイクの音量が小さい場合に上げる。大きくしすぎるとクリッピングする |
 
 ### Advanced Settings
 
-- OSC 送信先 IP / Port の変更（デフォルト: 127.0.0.1:9000）
+| パラメータ | デフォルト | 説明 |
+|---|---|---|
+| OSC IP | 127.0.0.1 | VRChat の OSC 受信アドレス。通常は変更不要 |
+| OSC Port | 9000 | VRChat の OSC 受信ポート。通常は変更不要 |
 
 ## 設定ファイル
 
 `~/.vea/config.yaml` に自動保存される。GUI で変更した値は即座に反映・保存される。
+
+```yaml
+audio:
+  channels: 1
+  device: null        # null = システムデフォルトマイク
+  input_gain: 1.0
+  sample_rate: 16000
+emotion:
+  analysis_interval_ms: 250
+  hysteresis_threshold: 0.1
+  lerp_speed: 0.15
+  parameter_prefix: VEA
+  silence_threshold: 0.01
+osc:
+  ip: 127.0.0.1
+  port: 9000
+```
 
 ## プロジェクト構成
 
