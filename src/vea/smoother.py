@@ -1,0 +1,1 @@
+"""Emotion smoothing with hysteresis."""
