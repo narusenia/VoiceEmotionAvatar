@@ -169,6 +169,13 @@ class VeaApp:
         self._config.save()
         logger.info("Input Gain: %.1f", value)
 
+    def _on_instant_mode_change(self, enabled: bool) -> None:
+        self._smoother.set_instant_mode(enabled)
+        logger.info("Instant Mode: %s", "ON" if enabled else "OFF")
+
+    def _on_instant_threshold_change(self, value: float) -> None:
+        self._smoother.set_instant_threshold(value)
+
     def _on_osc_change(self, ip: str, port: int) -> None:
         self._osc.update_target(ip, port)
         self._config.osc.ip = ip
@@ -189,6 +196,8 @@ class VeaApp:
             on_osc_change=self._on_osc_change,
             on_silence_change=self._on_silence_change,
             on_gain_change=self._on_gain_change,
+            on_instant_mode_change=self._on_instant_mode_change,
+            on_instant_threshold_change=self._on_instant_threshold_change,
         )
         self._gui.setup(
             default_device=self._config.audio.device,

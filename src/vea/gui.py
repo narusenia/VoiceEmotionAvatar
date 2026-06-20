@@ -41,6 +41,8 @@ class VeaGui:
         self._on_osc_change: Callable[[str, int], None] | None = None
         self._on_silence_change: Callable[[float], None] | None = None
         self._on_gain_change: Callable[[float], None] | None = None
+        self._on_instant_mode_change: Callable[[bool], None] | None = None
+        self._on_instant_threshold_change: Callable[[float], None] | None = None
         self._running = False
         self._devices: list[dict] = []
 
@@ -54,6 +56,8 @@ class VeaGui:
         on_osc_change: Callable[[str, int], None] | None = None,
         on_silence_change: Callable[[float], None] | None = None,
         on_gain_change: Callable[[float], None] | None = None,
+        on_instant_mode_change: Callable[[bool], None] | None = None,
+        on_instant_threshold_change: Callable[[float], None] | None = None,
     ) -> None:
         self._on_device_change = on_device_change
         self._on_start = on_start
@@ -63,6 +67,8 @@ class VeaGui:
         self._on_osc_change = on_osc_change
         self._on_silence_change = on_silence_change
         self._on_gain_change = on_gain_change
+        self._on_instant_mode_change = on_instant_mode_change
+        self._on_instant_threshold_change = on_instant_threshold_change
 
     def _build_ui(
         self,
@@ -145,6 +151,25 @@ class VeaGui:
                     self._bars[emotion] = bar
 
             dpg.add_separator()
+            dpg.add_text("Mode")
+
+            dpg.add_checkbox(
+                label="Instant Mode (閾値超えで即時切替)",
+                default_value=False,
+                callback=self._on_instant_toggle,
+                tag="instant_mode_cb",
+            )
+            dpg.add_slider_float(
+                label="Instant Threshold",
+                default_value=0.4,
+                min_value=0.1,
+                max_value=0.9,
+                callback=self._on_instant_threshold_slider,
+                width=200,
+                tag="instant_threshold_slider",
+            )
+
+            dpg.add_separator()
             dpg.add_text("Settings")
 
             dpg.add_slider_float(
@@ -154,6 +179,7 @@ class VeaGui:
                 max_value=1.0,
                 callback=self._on_lerp_slider,
                 width=200,
+                tag="lerp_slider",
             )
             dpg.add_slider_float(
                 label="Hysteresis",
@@ -162,6 +188,7 @@ class VeaGui:
                 max_value=0.5,
                 callback=self._on_hysteresis_slider,
                 width=200,
+                tag="hysteresis_slider",
             )
             dpg.add_slider_float(
                 label="Silence Threshold",
@@ -235,6 +262,14 @@ class VeaGui:
     def _on_gain_slider(self, sender, value, user_data) -> None:
         if self._on_gain_change:
             self._on_gain_change(value)
+
+    def _on_instant_toggle(self, sender, value, user_data) -> None:
+        if self._on_instant_mode_change:
+            self._on_instant_mode_change(value)
+
+    def _on_instant_threshold_slider(self, sender, value, user_data) -> None:
+        if self._on_instant_threshold_change:
+            self._on_instant_threshold_change(value)
 
     def _on_osc_apply(self, sender, value, user_data) -> None:
         ip = dpg.get_value("osc_ip_input")
