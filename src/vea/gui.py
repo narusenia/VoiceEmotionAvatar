@@ -51,8 +51,11 @@ class VeaGui:
         self._on_instant_smoothing_change: Callable[[float], None] | None = None
         self._on_hold_change: Callable[[float], None] | None = None
         self._on_full_mode_change: Callable[[bool], None] | None = None
+        self._on_manual_change: Callable[[dict[str, float]], None] | None = None
         self._running = False
         self._full_mode = False
+        self._manual_mode = False
+        self._manual_sliders: dict[str, int] = {}
         self._devices: list[dict] = []
 
     def set_callbacks(
@@ -70,6 +73,7 @@ class VeaGui:
         on_instant_smoothing_change: Callable[[float], None] | None = None,
         on_hold_change: Callable[[float], None] | None = None,
         on_full_mode_change: Callable[[bool], None] | None = None,
+        on_manual_change: Callable[[dict[str, float]], None] | None = None,
     ) -> None:
         self._on_device_change = on_device_change
         self._on_start = on_start
@@ -84,6 +88,7 @@ class VeaGui:
         self._on_instant_smoothing_change = on_instant_smoothing_change
         self._on_hold_change = on_hold_change
         self._on_full_mode_change = on_full_mode_change
+        self._on_manual_change = on_manual_change
 
     def _build_ui(
         self,
@@ -163,6 +168,28 @@ class VeaGui:
                 self._bar_groups[emotion] = grp
                 if emotion in ("disgust", "fear"):
                     dpg.configure_item(grp, show=False)
+
+            dpg.add_checkbox(
+                label="Manual Mode",
+                default_value=False,
+                callback=self._on_manual_toggle,
+                tag="manual_mode_cb",
+            )
+            with dpg.group(tag="manual_sliders_group", show=False):
+                for emotion in EMOTIONS_FULL:
+                    label = EMOTION_LABELS_JA[emotion]
+                    slider = dpg.add_slider_float(
+                        label=label,
+                        default_value=0.0,
+                        min_value=0.0,
+                        max_value=1.0,
+                        callback=self._on_manual_slider,
+                        width=200,
+                        tag=f"manual_{emotion}",
+                    )
+                    self._manual_sliders[emotion] = slider
+                    if emotion in ("disgust", "fear"):
+                        dpg.configure_item(slider, show=False)
 
             dpg.add_separator()
             dpg.add_text("Mode")
@@ -248,8 +275,24 @@ class VeaGui:
         self._full_mode = value
         for emotion in ("disgust", "fear"):
             dpg.configure_item(self._bar_groups[emotion], show=value)
+            if emotion in self._manual_sliders:
+                dpg.configure_item(self._manual_sliders[emotion], show=value)
         if self._on_full_mode_change:
             self._on_full_mode_change(value)
+
+    def _on_manual_toggle(self, sender, value, user_data) -> None:
+        self._manual_mode = value
+        dpg.configure_item("manual_sliders_group", show=value)
+
+    def _on_manual_slider(self, sender, value, user_data) -> None:
+        if not self._manual_mode or not self._on_manual_change:
+            return
+        scores = {}
+        from vea.emotion import EMOTIONS_SIMPLE, EMOTIONS_FULL
+        emotions = EMOTIONS_FULL if self._full_mode else EMOTIONS_SIMPLE
+        for e in emotions:
+            scores[e] = dpg.get_value(f"manual_{e}")
+        self._on_manual_change(scores)
 
     def _on_lerp_slider(self, s, v, u) -> None:
         if self._on_lerp_change: self._on_lerp_change(v)
@@ -280,6 +323,10 @@ class VeaGui:
         port = dpg.get_value("osc_port_input")
         if self._on_osc_change:
             self._on_osc_change(ip, port)
+
+    @property
+    def is_manual_mode(self) -> bool:
+        return self._manual_mode
 
     def update_bars(self, scores: dict[str, float]) -> None:
         for emotion, bar_id in self._bars.items():

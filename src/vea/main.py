@@ -179,6 +179,10 @@ class VeaApp:
         self._smoother.set_full_mode(enabled)
         logger.info("Emotion Mode: %s", "Full (7)" if enabled else "Simple (5)")
 
+    def _on_manual_change(self, scores: dict[str, float]) -> None:
+        self._osc.send(scores)
+        self._gui.update_bars(scores)
+
     def _on_osc_change(self, ip: str, port: int) -> None:
         self._osc.update_target(ip, port)
         self._config.osc.ip = ip
@@ -204,6 +208,7 @@ class VeaApp:
             on_instant_smoothing_change=self._on_instant_smoothing_change,
             on_hold_change=self._on_hold_change,
             on_full_mode_change=self._on_full_mode_change,
+            on_manual_change=self._on_manual_change,
         )
         self._gui.setup(
             default_device=self._config.audio.device,
@@ -217,7 +222,7 @@ class VeaApp:
 
         try:
             while self._gui.render_frame():
-                if self._pipeline_running:
+                if self._pipeline_running and not self._gui.is_manual_mode:
                     smoothed = self._smoother.tick()
                     self._osc.send(smoothed)
                     self._gui.update_bars(smoothed)
