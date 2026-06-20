@@ -9,7 +9,7 @@ import numpy as np
 
 from vea.audio import AudioCapture
 from vea.config import AppConfig
-from vea.emotion import EmotionRecognizer, VEA_EMOTIONS
+from vea.emotion import EmotionRecognizer, neutral_scores, get_emotions
 from vea.gui import VeaGui
 from vea.osc_sender import OscSender
 from vea.smoother import EmotionSmoother
@@ -84,7 +84,7 @@ class VeaApp:
                 self._latest_rms = rms
 
                 if rms < self._silence_threshold:
-                    raw = {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
+                    raw = neutral_scores(self._recognizer.full_mode)
                     is_silent = True
                 else:
                     raw = self._recognizer.predict(chunk, self._config.audio.sample_rate)
@@ -174,6 +174,11 @@ class VeaApp:
     def _on_hold_change(self, value: float) -> None:
         self._smoother.set_hold_time(value)
 
+    def _on_full_mode_change(self, enabled: bool) -> None:
+        self._recognizer.full_mode = enabled
+        self._smoother.set_full_mode(enabled)
+        logger.info("Emotion Mode: %s", "Full (7)" if enabled else "Simple (5)")
+
     def _on_osc_change(self, ip: str, port: int) -> None:
         self._osc.update_target(ip, port)
         self._config.osc.ip = ip
@@ -198,6 +203,7 @@ class VeaApp:
             on_instant_threshold_change=self._on_instant_threshold_change,
             on_instant_smoothing_change=self._on_instant_smoothing_change,
             on_hold_change=self._on_hold_change,
+            on_full_mode_change=self._on_full_mode_change,
         )
         self._gui.setup(
             default_device=self._config.audio.device,

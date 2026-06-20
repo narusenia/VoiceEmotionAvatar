@@ -4,8 +4,6 @@ import logging
 
 from pythonosc.udp_client import SimpleUDPClient
 
-from vea.emotion import VEA_EMOTIONS
-
 logger = logging.getLogger(__name__)
 
 
@@ -23,8 +21,7 @@ class OscSender:
     def send(self, scores: dict[str, float]) -> None:
         if self._client is None:
             return
-        for emotion in VEA_EMOTIONS:
-            value = scores.get(emotion, 0.0)
+        for emotion, value in scores.items():
             address = f"/avatar/parameters/{self._prefix}_{emotion.capitalize()}"
             try:
                 self._client.send_message(address, float(value))

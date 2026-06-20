@@ -11,45 +11,61 @@ logger = logging.getLogger(__name__)
 
 MODEL_ID = "iic/emotion2vec_plus_large"
 
-VEA_EMOTIONS = ["joy", "anger", "sadness", "surprise", "neutral"]
+EMOTIONS_SIMPLE = ["joy", "anger", "sadness", "surprise", "neutral"]
+EMOTIONS_FULL = ["joy", "anger", "sadness", "surprise", "neutral", "disgust", "fear"]
 
-LABEL_TO_VEA = {
-    "happy": "joy",
-    "angry": "anger",
-    "sad": "sadness",
-    "surprised": "surprise",
-    "neutral": "neutral",
-    "disgusted": "anger",
-    "fearful": "surprise",
-    "other": "neutral",
-    "unknown": "neutral",
-    "<unk>": "neutral",
-    "开心/happy": "joy",
-    "生气/angry": "anger",
-    "难过/sad": "sadness",
-    "吃惊/surprised": "surprise",
-    "中立/neutral": "neutral",
-    "厌恶/disgusted": "anger",
-    "恐惧/fearful": "surprise",
-    "其他/other": "neutral",
+LABEL_TO_SIMPLE = {
+    "happy": "joy", "开心/happy": "joy",
+    "angry": "anger", "生气/angry": "anger",
+    "sad": "sadness", "难过/sad": "sadness",
+    "surprised": "surprise", "吃惊/surprised": "surprise",
+    "neutral": "neutral", "中立/neutral": "neutral",
+    "disgusted": "anger", "厌恶/disgusted": "anger",
+    "fearful": "surprise", "恐惧/fearful": "surprise",
+    "other": "neutral", "其他/other": "neutral",
+    "unknown": "neutral", "<unk>": "neutral",
+}
+
+LABEL_TO_FULL = {
+    "happy": "joy", "开心/happy": "joy",
+    "angry": "anger", "生气/angry": "anger",
+    "sad": "sadness", "难过/sad": "sadness",
+    "surprised": "surprise", "吃惊/surprised": "surprise",
+    "neutral": "neutral", "中立/neutral": "neutral",
+    "disgusted": "disgust", "厌恶/disgusted": "disgust",
+    "fearful": "fear", "恐惧/fearful": "fear",
+    "other": "neutral", "其他/other": "neutral",
+    "unknown": "neutral", "<unk>": "neutral",
 }
 
 
-def _map_scores_to_vea(labels: list[str], scores: list[float]) -> dict[str, float]:
-    vea_scores = {e: 0.0 for e in VEA_EMOTIONS}
+def get_emotions(full_mode: bool = False) -> list[str]:
+    return EMOTIONS_FULL if full_mode else EMOTIONS_SIMPLE
+
+
+def map_scores(labels: list[str], scores: list[float], full_mode: bool = False) -> dict[str, float]:
+    emotions = EMOTIONS_FULL if full_mode else EMOTIONS_SIMPLE
+    label_map = LABEL_TO_FULL if full_mode else LABEL_TO_SIMPLE
+    result = {e: 0.0 for e in emotions}
     for label, score in zip(labels, scores):
-        vea_emotion = LABEL_TO_VEA.get(label, "neutral")
-        vea_scores[vea_emotion] += score
-    total = sum(vea_scores.values())
+        mapped = label_map.get(label, "neutral")
+        result[mapped] += score
+    total = sum(result.values())
     if total > 0:
-        for k in vea_scores:
-            vea_scores[k] /= total
-    return vea_scores
+        for k in result:
+            result[k] /= total
+    return result
+
+
+def neutral_scores(full_mode: bool = False) -> dict[str, float]:
+    emotions = EMOTIONS_FULL if full_mode else EMOTIONS_SIMPLE
+    return {e: (1.0 if e == "neutral" else 0.0) for e in emotions}
 
 
 class EmotionRecognizer:
     def __init__(self):
         self._model = None
+        self.full_mode = False
 
     def load_model(self) -> None:
         logger.info("FunASR をインポート中...")
@@ -74,7 +90,7 @@ class EmotionRecognizer:
             raise RuntimeError("Model not loaded. Call load_model() first.")
 
         if np.max(np.abs(audio_chunk)) < 1e-6:
-            return {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
+            return neutral_scores(self.full_mode)
 
         tmp_path = self._write_wav(audio_chunk, sample_rate)
 
@@ -86,7 +102,7 @@ class EmotionRecognizer:
             )
         except Exception as e:
             logger.error("Emotion prediction failed: %s", e)
-            return {e_name: (1.0 if e_name == "neutral" else 0.0) for e_name in VEA_EMOTIONS}
+            return neutral_scores(self.full_mode)
         finally:
             try:
                 os.unlink(tmp_path)
@@ -94,6 +110,6 @@ class EmotionRecognizer:
                 pass
 
         if not res or not res[0].get("labels"):
-            return {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
+            return neutral_scores(self.full_mode)
 
-        return _map_scores_to_vea(res[0]["labels"], res[0]["scores"])
+        return map_scores(res[0]["labels"], res[0]["scores"], self.full_mode)

@@ -2,11 +2,11 @@
 
 import time
 
-from vea.emotion import VEA_EMOTIONS
+from vea.emotion import get_emotions
 
 
 class EmotionSmoother:
-    def __init__(self, lerp_speed: float = 0.15, hysteresis_threshold: float = 0.1):
+    def __init__(self, lerp_speed: float = 0.15, hysteresis_threshold: float = 0.1, full_mode: bool = False):
         self._lerp_speed = lerp_speed
         self._hysteresis = hysteresis_threshold
         self._instant_mode = False
@@ -14,9 +14,11 @@ class EmotionSmoother:
         self._instant_smoothing = 0.5
         self._hold_time = 0.0
         self._last_change_time = 0.0
-        self._current: dict[str, float] = {e: 0.0 for e in VEA_EMOTIONS}
+        self._full_mode = full_mode
+        self._emotions = get_emotions(full_mode)
+        self._current: dict[str, float] = {e: 0.0 for e in self._emotions}
         self._current["neutral"] = 1.0
-        self._target: dict[str, float] = {e: 0.0 for e in VEA_EMOTIONS}
+        self._target: dict[str, float] = {e: 0.0 for e in self._emotions}
         self._target["neutral"] = 1.0
         self._dominant: str = "neutral"
 
@@ -27,6 +29,13 @@ class EmotionSmoother:
     @property
     def dominant(self) -> str:
         return self._dominant
+
+    def set_full_mode(self, enabled: bool) -> None:
+        if enabled == self._full_mode:
+            return
+        self._full_mode = enabled
+        self._emotions = get_emotions(enabled)
+        self.reset()
 
     def _is_held(self) -> bool:
         if self._hold_time <= 0:
@@ -46,11 +55,11 @@ class EmotionSmoother:
                 return
             if raw_scores[new_dominant] >= self._instant_threshold:
                 self._change_dominant(new_dominant)
-                self._target = {e: 0.0 for e in VEA_EMOTIONS}
+                self._target = {e: 0.0 for e in self._emotions}
                 self._target[new_dominant] = 1.0
             else:
                 self._change_dominant("neutral")
-                self._target = {e: 0.0 for e in VEA_EMOTIONS}
+                self._target = {e: 0.0 for e in self._emotions}
                 self._target["neutral"] = 1.0
         else:
             if not self._is_held() and new_dominant != self._dominant:
@@ -60,7 +69,7 @@ class EmotionSmoother:
 
     def tick(self) -> dict[str, float]:
         speed = self._instant_smoothing if self._instant_mode else self._lerp_speed
-        for emotion in VEA_EMOTIONS:
+        for emotion in self._emotions:
             target = self._target.get(emotion, 0.0)
             self._current[emotion] += (target - self._current[emotion]) * speed
         if not self._instant_mode:
@@ -93,9 +102,9 @@ class EmotionSmoother:
         self._hold_time = max(0.0, min(5.0, seconds))
 
     def reset(self) -> None:
-        self._current = {e: 0.0 for e in VEA_EMOTIONS}
+        self._current = {e: 0.0 for e in self._emotions}
         self._current["neutral"] = 1.0
-        self._target = {e: 0.0 for e in VEA_EMOTIONS}
+        self._target = {e: 0.0 for e in self._emotions}
         self._target["neutral"] = 1.0
         self._dominant = "neutral"
         self._last_change_time = 0.0
