@@ -69,7 +69,7 @@ FX Animator Controller に `VEA_Emotions` レイヤーを追加し、Direct Blen
 
 ### Unity Editor スクリプト
 
-`Assets/VEA/Editor/` に以下のエディタツールが含まれている:
+`unity/Editor/` にエディタツールが同梱されている。Unity プロジェクトの `Assets/VEA/Editor/` にコピーして使う。
 
 - **Tools → VEA → Setup Avatar**: Expression Parameters と FX レイヤーの自動セットアップ
 - **Tools → VEA → BlendShape Editor**: 各感情のアニメーションクリップを GUI で編集
@@ -119,6 +119,10 @@ VoiceEmotionAvatar/
 │   ├── osc_sender.py     # VRChat への OSC パラメータ送信
 │   ├── gui.py            # Dear PyGui による GUI
 │   └── config.py         # YAML 設定管理
+├── unity/Editor/
+│   ├── VeaSetupWindow.cs      # Expression Parameters / FX レイヤー自動セットアップ
+│   ├── VeaBlendShapeEditor.cs # 感情アニメーション BlendShape 編集 GUI
+│   └── VeaDebugTest.cs        # BlendShape 直接テスト / テスト用 FX 差し替え
 ├── docs/
 │   ├── requirements.md   # 要件定義書
 │   └── implementation-plan.md  # 実装計画書
