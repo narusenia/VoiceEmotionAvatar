@@ -54,6 +54,7 @@ class VeaApp:
         self._silence_threshold = self._config.emotion.silence_threshold
         self._input_gain = self._config.audio.input_gain
         self._log_counter = 0
+        self._latest_rms = 0.0
 
     def _load_model(self) -> bool:
         if self._recognizer._model is not None:
@@ -70,19 +71,17 @@ class VeaApp:
             self._gui.show_error(f"モデルの読み込みに失敗しました:\n{e}")
             return False
 
-    def _pipeline_loop(self) -> None:
+    def _inference_loop(self) -> None:
         interval = self._config.emotion.analysis_interval_ms / 1000.0
         while self._pipeline_running:
             start = time.perf_counter()
             try:
                 chunk = self._audio.get_chunk()
-
-                # ゲイン適用
                 chunk = chunk * self._input_gain
                 chunk = np.clip(chunk, -1.0, 1.0)
 
                 rms = float((chunk ** 2).mean() ** 0.5)
-                self._gui.update_volume(rms)
+                self._latest_rms = rms
 
                 if rms < self._silence_threshold:
                     raw = {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
@@ -91,26 +90,19 @@ class VeaApp:
                     raw = self._recognizer.predict(chunk, self._config.audio.sample_rate)
                     is_silent = False
 
-                smoothed = self._smoother.update(raw)
-                self._osc.send(smoothed)
-                self._gui.update_bars(smoothed)
+                self._smoother.set_target(raw)
 
-                # 4回に1回（1秒に1回）デバッグログ出力
                 self._log_counter += 1
-                if self._log_counter % 4 == 0:
+                if self._log_counter % 4 == 0 and not is_silent:
                     dominant = max(raw, key=raw.get)
                     raw_str = " ".join(f"{k}={v:.2f}" for k, v in raw.items())
-                    sm_dominant = max(smoothed, key=smoothed.get)
-                    if is_silent:
-                        logger.debug("RMS=%.4f (silent) → neutral", rms)
-                    else:
-                        logger.info(
-                            "RMS=%.4f | raw: %s [%s] | smoothed: [%s]",
-                            rms, raw_str, dominant, sm_dominant,
-                        )
+                    logger.info(
+                        "RMS=%.4f | raw: %s [%s]",
+                        rms, raw_str, dominant,
+                    )
 
             except Exception as e:
-                logger.error("Pipeline error: %s", e)
+                logger.error("Inference error: %s", e)
             elapsed = time.perf_counter() - start
             sleep_time = max(0, interval - elapsed)
             if sleep_time > 0:
@@ -129,9 +121,9 @@ class VeaApp:
         else:
             logger.info("マイク接続OK")
         self._pipeline_running = True
-        self._worker_thread = threading.Thread(target=self._pipeline_loop, daemon=True)
+        self._worker_thread = threading.Thread(target=self._inference_loop, daemon=True)
         self._worker_thread.start()
-        logger.info("パイプライン開始 (%.0fms間隔, gain=%.1f)", self._config.emotion.analysis_interval_ms, self._input_gain)
+        logger.info("パイプライン開始 (推論=%.0fms, 出力=毎フレーム)", self._config.emotion.analysis_interval_ms)
 
     def _stop_pipeline(self) -> None:
         self._pipeline_running = False
@@ -215,6 +207,11 @@ class VeaApp:
 
         try:
             while self._gui.render_frame():
+                if self._pipeline_running:
+                    smoothed = self._smoother.tick()
+                    self._osc.send(smoothed)
+                    self._gui.update_bars(smoothed)
+                    self._gui.update_volume(self._latest_rms)
                 self._gui.tick()
         except KeyboardInterrupt:
             pass
