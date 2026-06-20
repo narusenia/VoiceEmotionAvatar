@@ -1,5 +1,7 @@
 """Emotion smoothing with hysteresis."""
 
+import time
+
 from vea.emotion import VEA_EMOTIONS
 
 
@@ -10,6 +12,8 @@ class EmotionSmoother:
         self._instant_mode = False
         self._instant_threshold = 0.4
         self._instant_smoothing = 0.5
+        self._hold_time = 0.0
+        self._last_change_time = 0.0
         self._current: dict[str, float] = {e: 0.0 for e in VEA_EMOTIONS}
         self._current["neutral"] = 1.0
         self._target: dict[str, float] = {e: 0.0 for e in VEA_EMOTIONS}
@@ -24,21 +28,34 @@ class EmotionSmoother:
     def dominant(self) -> str:
         return self._dominant
 
+    def _is_held(self) -> bool:
+        if self._hold_time <= 0:
+            return False
+        return (time.perf_counter() - self._last_change_time) < self._hold_time
+
+    def _change_dominant(self, new_dominant: str) -> None:
+        if new_dominant != self._dominant:
+            self._dominant = new_dominant
+            self._last_change_time = time.perf_counter()
+
     def set_target(self, raw_scores: dict[str, float]) -> None:
         new_dominant = max(raw_scores, key=raw_scores.get)
+
         if self._instant_mode:
+            if self._is_held():
+                return
             if raw_scores[new_dominant] >= self._instant_threshold:
-                self._dominant = new_dominant
+                self._change_dominant(new_dominant)
                 self._target = {e: 0.0 for e in VEA_EMOTIONS}
                 self._target[new_dominant] = 1.0
             else:
-                self._dominant = "neutral"
+                self._change_dominant("neutral")
                 self._target = {e: 0.0 for e in VEA_EMOTIONS}
                 self._target["neutral"] = 1.0
         else:
-            if new_dominant != self._dominant:
+            if not self._is_held() and new_dominant != self._dominant:
                 if raw_scores[new_dominant] - raw_scores.get(self._dominant, 0.0) > self._hysteresis:
-                    self._dominant = new_dominant
+                    self._change_dominant(new_dominant)
             self._target = dict(raw_scores)
 
     def tick(self) -> dict[str, float]:
@@ -54,35 +71,8 @@ class EmotionSmoother:
         return self._current.copy()
 
     def update(self, raw_scores: dict[str, float]) -> dict[str, float]:
-        new_dominant = max(raw_scores, key=raw_scores.get)
-
-        if self._instant_mode:
-            if raw_scores[new_dominant] >= self._instant_threshold:
-                self._dominant = new_dominant
-                target = {e: 0.0 for e in VEA_EMOTIONS}
-                target[new_dominant] = 1.0
-            else:
-                self._dominant = "neutral"
-                target = {e: 0.0 for e in VEA_EMOTIONS}
-                target["neutral"] = 1.0
-            for emotion in VEA_EMOTIONS:
-                self._current[emotion] += (target[emotion] - self._current[emotion]) * self._instant_smoothing
-            return self._current.copy()
-
-        if new_dominant != self._dominant:
-            if raw_scores[new_dominant] - raw_scores.get(self._dominant, 0.0) > self._hysteresis:
-                self._dominant = new_dominant
-
-        for emotion in VEA_EMOTIONS:
-            target = raw_scores.get(emotion, 0.0)
-            self._current[emotion] += (target - self._current[emotion]) * self._lerp_speed
-
-        total = sum(self._current.values())
-        if total > 0:
-            for k in self._current:
-                self._current[k] /= total
-
-        return self._current.copy()
+        self.set_target(raw_scores)
+        return self.tick()
 
     def set_lerp_speed(self, speed: float) -> None:
         self._lerp_speed = max(0.01, min(1.0, speed))
@@ -99,9 +89,13 @@ class EmotionSmoother:
     def set_instant_smoothing(self, value: float) -> None:
         self._instant_smoothing = max(0.05, min(1.0, 1.0 - value + 0.05))
 
+    def set_hold_time(self, seconds: float) -> None:
+        self._hold_time = max(0.0, min(5.0, seconds))
+
     def reset(self) -> None:
         self._current = {e: 0.0 for e in VEA_EMOTIONS}
         self._current["neutral"] = 1.0
         self._target = {e: 0.0 for e in VEA_EMOTIONS}
         self._target["neutral"] = 1.0
         self._dominant = "neutral"
+        self._last_change_time = 0.0

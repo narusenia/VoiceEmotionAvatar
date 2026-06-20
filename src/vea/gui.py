@@ -44,6 +44,7 @@ class VeaGui:
         self._on_instant_mode_change: Callable[[bool], None] | None = None
         self._on_instant_threshold_change: Callable[[float], None] | None = None
         self._on_instant_smoothing_change: Callable[[float], None] | None = None
+        self._on_hold_change: Callable[[float], None] | None = None
         self._running = False
         self._devices: list[dict] = []
 
@@ -60,6 +61,7 @@ class VeaGui:
         on_instant_mode_change: Callable[[bool], None] | None = None,
         on_instant_threshold_change: Callable[[float], None] | None = None,
         on_instant_smoothing_change: Callable[[float], None] | None = None,
+        on_hold_change: Callable[[float], None] | None = None,
     ) -> None:
         self._on_device_change = on_device_change
         self._on_start = on_start
@@ -72,6 +74,7 @@ class VeaGui:
         self._on_instant_mode_change = on_instant_mode_change
         self._on_instant_threshold_change = on_instant_threshold_change
         self._on_instant_smoothing_change = on_instant_smoothing_change
+        self._on_hold_change = on_hold_change
 
     def _build_ui(
         self,
@@ -211,6 +214,15 @@ class VeaGui:
                 callback=self._on_silence_slider,
                 width=200,
             )
+            dpg.add_slider_float(
+                label="Hold (sec)",
+                default_value=0.0,
+                min_value=0.0,
+                max_value=5.0,
+                format="%.1f",
+                callback=self._on_hold_slider,
+                width=200,
+            )
 
             dpg.add_separator()
             if dpg.add_collapsing_header(label="Advanced Settings"):
@@ -286,6 +298,10 @@ class VeaGui:
     def _on_instant_smoothing_slider(self, sender, value, user_data) -> None:
         if self._on_instant_smoothing_change:
             self._on_instant_smoothing_change(value)
+
+    def _on_hold_slider(self, sender, value, user_data) -> None:
+        if self._on_hold_change:
+            self._on_hold_change(value)
 
     def _on_osc_apply(self, sender, value, user_data) -> None:
         ip = dpg.get_value("osc_ip_input")
