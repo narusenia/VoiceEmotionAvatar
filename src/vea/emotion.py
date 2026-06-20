@@ -23,6 +23,15 @@ LABEL_TO_VEA = {
     "fearful": "surprise",
     "other": "neutral",
     "unknown": "neutral",
+    "<unk>": "neutral",
+    "开心/happy": "joy",
+    "生气/angry": "anger",
+    "难过/sad": "sadness",
+    "吃惊/surprised": "surprise",
+    "中立/neutral": "neutral",
+    "厌恶/disgusted": "anger",
+    "恐惧/fearful": "surprise",
+    "其他/other": "neutral",
 }
 
 
