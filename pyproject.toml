@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "VRChat voice emotion recognition to avatar expression via OSC"
 requires-python = ">=3.10"
 dependencies = [
-    "torch>=2.0",
-    "torchaudio>=2.0",
+    "torch>=2.4",
+    "torchaudio>=2.4",
     "funasr>=1.0",
     "sounddevice>=0.4",
     "numpy>=1.24",
@@ -17,5 +17,18 @@ dependencies = [
 [project.scripts]
 vea = "vea.main:main"
 
-[tool.uv]
-extra-index-url = ["https://download.pytorch.org/whl/cu121"]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vea"]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124" }]
+torchaudio = [{ index = "pytorch-cu124" }]
