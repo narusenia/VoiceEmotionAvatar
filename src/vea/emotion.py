@@ -50,7 +50,6 @@ def _map_scores_to_vea(labels: list[str], scores: list[float]) -> dict[str, floa
 class EmotionRecognizer:
     def __init__(self):
         self._model = None
-        self._log_count = 0
 
     def load_model(self) -> None:
         logger.info("FunASR をインポート中...")
@@ -94,22 +93,7 @@ class EmotionRecognizer:
             except OSError:
                 pass
 
-        self._log_count += 1
-        if self._log_count <= 5 or self._log_count % 20 == 0:
-            logger.info("Model raw output: %s", res)
-
         if not res or not res[0].get("labels"):
-            if not res:
-                logger.warning("Model returned empty result")
-            elif res and not res[0].get("labels"):
-                logger.warning("Model result has no 'labels' key. Keys: %s", list(res[0].keys()))
             return {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
 
-        labels = res[0]["labels"]
-        scores = res[0]["scores"]
-
-        if self._log_count <= 5:
-            logger.info("Labels: %s", labels)
-            logger.info("Scores: %s", [f"{s:.3f}" for s in scores])
-
-        return _map_scores_to_vea(labels, scores)
+        return _map_scores_to_vea(res[0]["labels"], res[0]["scores"])
