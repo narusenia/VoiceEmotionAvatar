@@ -174,7 +174,7 @@ class VeaGui:
             dpg.add_slider_float(
                 label="Smoothing",
                 default_value=0.5,
-                min_value=0.05,
+                min_value=0.0,
                 max_value=1.0,
                 callback=self._on_instant_smoothing_slider,
                 width=200,

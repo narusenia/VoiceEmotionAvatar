@@ -97,7 +97,7 @@ class EmotionSmoother:
         self._instant_threshold = max(0.1, min(0.9, threshold))
 
     def set_instant_smoothing(self, value: float) -> None:
-        self._instant_smoothing = max(0.05, min(1.0, value))
+        self._instant_smoothing = max(0.05, min(1.0, 1.0 - value + 0.05))
 
     def reset(self) -> None:
         self._current = {e: 0.0 for e in VEA_EMOTIONS}
