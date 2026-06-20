@@ -30,6 +30,8 @@ EMOTION_LABELS_JA = {
 class VeaGui:
     def __init__(self):
         self._bars: dict[str, int] = {}
+        self._volume_bar: int | None = None
+        self._volume_text: int | None = None
         self._status_text: int | None = None
         self._on_device_change: Callable[[int | None], None] | None = None
         self._on_start: Callable[[], None] | None = None
@@ -38,6 +40,7 @@ class VeaGui:
         self._on_hysteresis_change: Callable[[float], None] | None = None
         self._on_osc_change: Callable[[str, int], None] | None = None
         self._on_silence_change: Callable[[float], None] | None = None
+        self._on_gain_change: Callable[[float], None] | None = None
         self._running = False
         self._devices: list[dict] = []
 
@@ -50,6 +53,7 @@ class VeaGui:
         on_hysteresis_change: Callable[[float], None] | None = None,
         on_osc_change: Callable[[str, int], None] | None = None,
         on_silence_change: Callable[[float], None] | None = None,
+        on_gain_change: Callable[[float], None] | None = None,
     ) -> None:
         self._on_device_change = on_device_change
         self._on_start = on_start
@@ -58,6 +62,7 @@ class VeaGui:
         self._on_hysteresis_change = on_hysteresis_change
         self._on_osc_change = on_osc_change
         self._on_silence_change = on_silence_change
+        self._on_gain_change = on_gain_change
 
     def _build_ui(
         self,
@@ -65,6 +70,7 @@ class VeaGui:
         default_lerp: float,
         default_hysteresis: float,
         default_silence: float,
+        default_gain: float,
         default_osc_ip: str,
         default_osc_port: int,
     ) -> None:
@@ -89,6 +95,30 @@ class VeaGui:
                 tag="device_combo",
                 width=-1,
             )
+
+            # Input Gain
+            dpg.add_slider_float(
+                label="Input Gain",
+                default_value=default_gain,
+                min_value=0.1,
+                max_value=10.0,
+                callback=self._on_gain_slider,
+                width=200,
+                tag="gain_slider",
+            )
+
+            # Volume Meter
+            with dpg.group(horizontal=True):
+                dpg.add_text("Level: ")
+                self._volume_bar = dpg.add_progress_bar(
+                    default_value=0.0,
+                    overlay="--",
+                    width=-80,
+                    tag="volume_bar",
+                )
+                self._volume_text = dpg.add_text("0.000", tag="volume_text")
+            dpg.bind_item_theme(self._volume_bar, self._create_bar_theme((50, 200, 50)))
+
             dpg.add_separator()
 
             with dpg.group(horizontal=True):
@@ -202,6 +232,10 @@ class VeaGui:
         if self._on_silence_change:
             self._on_silence_change(value)
 
+    def _on_gain_slider(self, sender, value, user_data) -> None:
+        if self._on_gain_change:
+            self._on_gain_change(value)
+
     def _on_osc_apply(self, sender, value, user_data) -> None:
         ip = dpg.get_value("osc_ip_input")
         port = dpg.get_value("osc_port_input")
@@ -213,6 +247,18 @@ class VeaGui:
             val = scores.get(emotion, 0.0)
             dpg.set_value(bar_id, val)
             dpg.configure_item(bar_id, overlay=f"{val:.1%}")
+
+    def update_volume(self, rms: float) -> None:
+        display = min(rms * 5.0, 1.0)
+        dpg.set_value("volume_bar", display)
+        dpg.set_value("volume_text", f"{rms:.3f}")
+        if rms > 0.05:
+            color = (50, 220, 50)
+        elif rms > 0.01:
+            color = (220, 220, 50)
+        else:
+            color = (100, 100, 100)
+        dpg.configure_item("volume_bar", overlay=f"{rms:.3f}")
 
     def show_error(self, message: str) -> None:
         with dpg.window(label="Error", modal=True, no_close=False, width=400, height=120):
@@ -228,14 +274,15 @@ class VeaGui:
         default_lerp: float = 0.15,
         default_hysteresis: float = 0.1,
         default_silence: float = 0.01,
+        default_gain: float = 1.0,
         default_osc_ip: str = "127.0.0.1",
         default_osc_port: int = 9000,
     ) -> None:
         dpg.create_context()
-        dpg.create_viewport(title="VoiceEmotionAvatar", width=500, height=620)
+        dpg.create_viewport(title="VoiceEmotionAvatar", width=500, height=680)
         self._build_ui(
             default_device, default_lerp, default_hysteresis,
-            default_silence, default_osc_ip, default_osc_port,
+            default_silence, default_gain, default_osc_ip, default_osc_port,
         )
         dpg.setup_dearpygui()
         dpg.set_primary_window("main_window", True)

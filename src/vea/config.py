@@ -30,6 +30,7 @@ class AudioConfig:
     device: int | None = None
     sample_rate: int = 16000
     channels: int = 1
+    input_gain: float = 1.0
 
 
 @dataclass

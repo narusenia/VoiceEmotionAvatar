@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 RETRY_INTERVAL = 3.0
 MAX_RETRIES = 10
+WINDOW_DURATION_S = 1.5
 
 
 def list_input_devices() -> list[dict]:
@@ -35,7 +36,8 @@ class AudioCapture:
         self._sample_rate = sample_rate
         self._channels = channels
         self._chunk_samples = int(sample_rate * chunk_duration_ms / 1000)
-        self._buffer = np.zeros(self._chunk_samples, dtype=np.float32)
+        self._window_samples = int(sample_rate * WINDOW_DURATION_S)
+        self._ring = np.zeros(self._window_samples, dtype=np.float32)
         self._write_pos = 0
         self._lock = threading.Lock()
         self._stream: sd.InputStream | None = None
@@ -59,15 +61,21 @@ class AudioCapture:
             logger.warning("Audio status: %s", status)
         mono = indata[:, 0] if indata.ndim > 1 else indata.flatten()
         with self._lock:
-            space = self._chunk_samples - self._write_pos
-            if len(mono) <= space:
-                self._buffer[self._write_pos : self._write_pos + len(mono)] = mono
-                self._write_pos += len(mono)
+            n = len(mono)
+            if n >= self._window_samples:
+                self._ring[:] = mono[-self._window_samples:]
+                self._write_pos = 0
             else:
-                self._buffer[self._write_pos:] = mono[:space]
-                overflow = len(mono) - space
-                self._buffer[:overflow] = mono[space:]
-                self._write_pos = overflow
+                end = self._write_pos + n
+                if end <= self._window_samples:
+                    self._ring[self._write_pos:end] = mono
+                    self._write_pos = end % self._window_samples
+                else:
+                    first = self._window_samples - self._write_pos
+                    self._ring[self._write_pos:] = mono[:first]
+                    rest = n - first
+                    self._ring[:rest] = mono[first:]
+                    self._write_pos = rest
 
     def _open_stream(self) -> bool:
         try:
@@ -110,9 +118,8 @@ class AudioCapture:
 
     def get_chunk(self) -> np.ndarray:
         with self._lock:
-            chunk = self._buffer.copy()
-            self._write_pos = 0
-        return chunk
+            result = np.roll(self._ring, -self._write_pos)
+        return result
 
     def stop(self) -> None:
         self._running = False

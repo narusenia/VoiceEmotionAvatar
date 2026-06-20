@@ -5,9 +5,11 @@ import threading
 import time
 import sys
 
+import numpy as np
+
 from vea.audio import AudioCapture
 from vea.config import AppConfig
-from vea.emotion import EmotionRecognizer
+from vea.emotion import EmotionRecognizer, VEA_EMOTIONS
 from vea.gui import VeaGui
 from vea.osc_sender import OscSender
 from vea.smoother import EmotionSmoother
@@ -50,6 +52,8 @@ class VeaApp:
         self._worker_thread: threading.Thread | None = None
         self._pipeline_running = False
         self._silence_threshold = self._config.emotion.silence_threshold
+        self._input_gain = self._config.audio.input_gain
+        self._log_counter = 0
 
     def _load_model(self) -> bool:
         if self._recognizer._model is not None:
@@ -72,15 +76,39 @@ class VeaApp:
             start = time.perf_counter()
             try:
                 chunk = self._audio.get_chunk()
+
+                # ゲイン適用
+                chunk = chunk * self._input_gain
+                chunk = np.clip(chunk, -1.0, 1.0)
+
                 rms = float((chunk ** 2).mean() ** 0.5)
+                self._gui.update_volume(rms)
+
                 if rms < self._silence_threshold:
-                    from vea.emotion import VEA_EMOTIONS
                     raw = {e: (1.0 if e == "neutral" else 0.0) for e in VEA_EMOTIONS}
+                    is_silent = True
                 else:
                     raw = self._recognizer.predict(chunk, self._config.audio.sample_rate)
+                    is_silent = False
+
                 smoothed = self._smoother.update(raw)
                 self._osc.send(smoothed)
                 self._gui.update_bars(smoothed)
+
+                # 4回に1回（1秒に1回）デバッグログ出力
+                self._log_counter += 1
+                if self._log_counter % 4 == 0:
+                    dominant = max(raw, key=raw.get)
+                    raw_str = " ".join(f"{k}={v:.2f}" for k, v in raw.items())
+                    sm_dominant = max(smoothed, key=smoothed.get)
+                    if is_silent:
+                        logger.debug("RMS=%.4f (silent) → neutral", rms)
+                    else:
+                        logger.info(
+                            "RMS=%.4f | raw: %s [%s] | smoothed: [%s]",
+                            rms, raw_str, dominant, sm_dominant,
+                        )
+
             except Exception as e:
                 logger.error("Pipeline error: %s", e)
             elapsed = time.perf_counter() - start
@@ -103,7 +131,7 @@ class VeaApp:
         self._pipeline_running = True
         self._worker_thread = threading.Thread(target=self._pipeline_loop, daemon=True)
         self._worker_thread.start()
-        logger.info("パイプライン開始 (%.0fms間隔)", self._config.emotion.analysis_interval_ms)
+        logger.info("パイプライン開始 (%.0fms間隔, gain=%.1f)", self._config.emotion.analysis_interval_ms, self._input_gain)
 
     def _stop_pipeline(self) -> None:
         self._pipeline_running = False
@@ -135,6 +163,12 @@ class VeaApp:
         self._config.emotion.silence_threshold = value
         self._config.save()
 
+    def _on_gain_change(self, value: float) -> None:
+        self._input_gain = value
+        self._config.audio.input_gain = value
+        self._config.save()
+        logger.info("Input Gain: %.1f", value)
+
     def _on_osc_change(self, ip: str, port: int) -> None:
         self._osc.update_target(ip, port)
         self._config.osc.ip = ip
@@ -154,12 +188,14 @@ class VeaApp:
             on_hysteresis_change=self._on_hysteresis_change,
             on_osc_change=self._on_osc_change,
             on_silence_change=self._on_silence_change,
+            on_gain_change=self._on_gain_change,
         )
         self._gui.setup(
             default_device=self._config.audio.device,
             default_lerp=self._config.emotion.lerp_speed,
             default_hysteresis=self._config.emotion.hysteresis_threshold,
             default_silence=self._config.emotion.silence_threshold,
+            default_gain=self._config.audio.input_gain,
             default_osc_ip=self._config.osc.ip,
             default_osc_port=self._config.osc.port,
         )
