@@ -13,17 +13,21 @@ namespace VEA.Editor
     {
         private VRCAvatarDescriptor _avatar;
         private string _outputFolder = "Assets/VEA/Generated";
+        private bool _fullMode;
         private Vector2 _scrollPos;
 
-        private static readonly string[] EmotionNames = { "Joy", "Anger", "Sadness", "Surprise", "Neutral" };
+        private static readonly string[] SimpleEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Neutral" };
+        private static readonly string[] FullEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Neutral", "Disgust", "Fear" };
         private const string ParameterPrefix = "VEA";
         private const string VEA_OBJECT_NAME = "VEA_EmotionSystem";
+
+        private string[] ActiveEmotions => _fullMode ? FullEmotions : SimpleEmotions;
 
         [MenuItem("Tools/VEA/Setup with Modular Avatar")]
         public static void ShowWindow()
         {
             var window = GetWindow<VeaMaSetup>("VEA MA Setup");
-            window.minSize = new Vector2(420, 320);
+            window.minSize = new Vector2(420, 380);
         }
 
         private void OnGUI()
@@ -41,11 +45,31 @@ namespace VEA.Editor
             _avatar = (VRCAvatarDescriptor)EditorGUILayout.ObjectField(
                 "Avatar", _avatar, typeof(VRCAvatarDescriptor), true);
 
+            _fullMode = EditorGUILayout.Toggle("Full Mode (7 emotions)", _fullMode);
+            if (_fullMode)
+            {
+                EditorGUILayout.HelpBox(
+                    "Simple: Joy, Anger, Sadness, Surprise, Neutral\n" +
+                    "Full: + Disgust (嫌悪), Fear (恐怖)",
+                    MessageType.None);
+            }
+
             if (_avatar == null)
             {
                 EditorGUILayout.HelpBox("アバターをドラッグしてください。", MessageType.Warning);
                 EditorGUILayout.EndScrollView();
                 return;
+            }
+
+            // パラメータコスト表示
+            var exParams = _avatar.expressionParameters;
+            if (exParams != null)
+            {
+                int cost = exParams.CalcTotalCost();
+                int newCost = ActiveEmotions.Length * 8;
+                EditorGUILayout.LabelField($"パラメータコスト: 現在 {cost} + VEA {newCost} = {cost + newCost} / 256");
+                if (cost + newCost > 256)
+                    EditorGUILayout.HelpBox("パラメータコストが上限(256)を超えます！", MessageType.Error);
             }
 
             var existing = _avatar.transform.Find(VEA_OBJECT_NAME);
@@ -96,8 +120,9 @@ namespace VEA.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
+            string mode = _fullMode ? "Full (7感情)" : "Simple (5感情)";
             EditorUtility.DisplayDialog("VEA MA Setup",
-                "セットアップ完了！\n\n" +
+                $"セットアップ完了！ [{mode}]\n\n" +
                 "1. Tools → VEA → BlendShape Editor で表情を設定\n" +
                 "2. アバターをアップロード\n\n" +
                 "Modular Avatarがビルド時にFXレイヤーをマージします。",
@@ -106,11 +131,12 @@ namespace VEA.Editor
 
         private AnimatorController CreateVeaController()
         {
-            string path = $"{_outputFolder}/VEA_MA_FX.controller";
+            string suffix = _fullMode ? "Full" : "Simple";
+            string path = $"{_outputFolder}/VEA_MA_FX_{suffix}.controller";
             var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
             if (existing != null)
             {
-                foreach (var eName in EmotionNames)
+                foreach (var eName in ActiveEmotions)
                 {
                     string pName = $"{ParameterPrefix}_{eName}";
                     if (!existing.parameters.Any(p => p.name == pName))
@@ -120,10 +146,10 @@ namespace VEA.Editor
             }
 
             var controller = new AnimatorController();
-            controller.name = "VEA_MA_FX";
+            controller.name = $"VEA_MA_FX_{suffix}";
             AssetDatabase.CreateAsset(controller, path);
 
-            foreach (var eName in EmotionNames)
+            foreach (var eName in ActiveEmotions)
                 controller.AddParameter($"{ParameterPrefix}_{eName}", AnimatorControllerParameterType.Float);
 
             return controller;
@@ -139,7 +165,7 @@ namespace VEA.Editor
                 AssetDatabase.Refresh();
             }
 
-            foreach (var eName in EmotionNames)
+            foreach (var eName in ActiveEmotions)
             {
                 string clipPath = $"{animFolder}/VEA_{eName}.anim";
                 var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
@@ -173,7 +199,7 @@ namespace VEA.Editor
                 blendType = BlendTreeType.Direct,
             };
 
-            foreach (var eName in EmotionNames)
+            foreach (var eName in ActiveEmotions)
             {
                 blendTree.AddChild(clips[eName]);
                 var children = blendTree.children;
@@ -240,7 +266,6 @@ namespace VEA.Editor
                 veaObj.transform.localScale = Vector3.one;
             }
 
-            // MA Merge Animator
             var mergeAnimator = veaObj.GetComponent<ModularAvatarMergeAnimator>();
             if (mergeAnimator == null)
                 mergeAnimator = Undo.AddComponent<ModularAvatarMergeAnimator>(veaObj);
@@ -251,13 +276,12 @@ namespace VEA.Editor
             mergeAnimator.matchAvatarWriteDefaults = true;
             EditorUtility.SetDirty(mergeAnimator);
 
-            // MA Parameters
             var maParams = veaObj.GetComponent<ModularAvatarParameters>();
             if (maParams == null)
                 maParams = Undo.AddComponent<ModularAvatarParameters>(veaObj);
 
             maParams.parameters = new List<ParameterConfig>();
-            foreach (var eName in EmotionNames)
+            foreach (var eName in ActiveEmotions)
             {
                 maParams.parameters.Add(new ParameterConfig
                 {

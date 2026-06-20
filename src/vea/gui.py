@@ -155,8 +155,7 @@ class VeaGui:
             for emotion in EMOTIONS_FULL:
                 color = EMOTION_COLORS[emotion]
                 label = EMOTION_LABELS_JA[emotion]
-                grp = dpg.add_group(horizontal=True, tag=f"bar_group_{emotion}")
-                with grp:
+                with dpg.group(horizontal=True, tag=f"bar_group_{emotion}") as grp:
                     dpg.add_text(f"{label:24s}")
                     bar = dpg.add_progress_bar(default_value=0.0, overlay="0.0%", width=-1)
                     dpg.bind_item_theme(bar, self._create_bar_theme(color))
