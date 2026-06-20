@@ -6,7 +6,7 @@ import logging
 import dearpygui.dearpygui as dpg
 
 from vea.audio import list_input_devices
-from vea.emotion import EMOTIONS_SIMPLE, EMOTIONS_FULL
+from vea.emotion import EMOTIONS_FULL
 
 logger = logging.getLogger(__name__)
 

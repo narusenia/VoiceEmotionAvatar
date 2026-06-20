@@ -16,7 +16,10 @@ namespace VEA.Editor
         private bool _createAnimClips = true;
         private Vector2 _scrollPos;
 
-        private static readonly string[] EmotionNames = { "Joy", "Anger", "Sadness", "Surprise", "Neutral" };
+        private bool _fullMode;
+        private static readonly string[] SimpleEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Neutral" };
+        private static readonly string[] FullEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Disgust", "Fear", "Neutral" };
+        private string[] EmotionNames => _fullMode ? FullEmotions : SimpleEmotions;
         private const string ParameterPrefix = "VEA";
         private const string LayerName = "VEA_Emotions";
 
@@ -43,6 +46,7 @@ namespace VEA.Editor
                 "Avatar", _avatar, typeof(VRCAvatarDescriptor), true);
 
             _outputFolder = EditorGUILayout.TextField("Output Folder", _outputFolder);
+            _fullMode = EditorGUILayout.Toggle("Full Mode (7 emotions)", _fullMode);
             _createAnimClips = EditorGUILayout.Toggle("Create Animation Clips", _createAnimClips);
 
             EditorGUILayout.Space(10);

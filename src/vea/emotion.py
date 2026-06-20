@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 MODEL_ID = "iic/emotion2vec_plus_large"
 
 EMOTIONS_SIMPLE = ["joy", "anger", "sadness", "surprise", "neutral"]
-EMOTIONS_FULL = ["joy", "anger", "sadness", "surprise", "neutral", "disgust", "fear"]
+EMOTIONS_FULL = ["joy", "anger", "sadness", "surprise", "disgust", "fear", "neutral"]
 
 LABEL_TO_SIMPLE = {
     "happy": "joy", "开心/happy": "joy",

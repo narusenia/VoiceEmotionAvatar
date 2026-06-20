@@ -17,8 +17,11 @@ namespace VEA.Editor
         private string _searchFilter = "";
         private bool _isPreviewing;
 
-        private static readonly string[] EmotionNames = { "Joy", "Anger", "Sadness", "Surprise", "Neutral" };
-        private static readonly Color[] EmotionColors =
+        private bool _fullMode;
+
+        private static readonly string[] SimpleEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Neutral" };
+        private static readonly string[] FullEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Disgust", "Fear", "Neutral" };
+        private static readonly Color[] SimpleColors =
         {
             new Color(1f, 0.84f, 0f),
             new Color(0.94f, 0.27f, 0.27f),
@@ -26,6 +29,19 @@ namespace VEA.Editor
             new Color(0.98f, 0.57f, 0.24f),
             new Color(0.58f, 0.64f, 0.72f),
         };
+        private static readonly Color[] FullColors =
+        {
+            new Color(1f, 0.84f, 0f),
+            new Color(0.94f, 0.27f, 0.27f),
+            new Color(0.38f, 0.65f, 0.96f),
+            new Color(0.98f, 0.57f, 0.24f),
+            new Color(0.58f, 0.64f, 0.72f),
+            new Color(0.51f, 0.31f, 0.71f),
+            new Color(0.39f, 0.78f, 0.71f),
+        };
+
+        private string[] EmotionNames => _fullMode ? FullEmotions : SimpleEmotions;
+        private Color[] EmotionColors => _fullMode ? FullColors : SimpleColors;
 
         private Dictionary<string, Dictionary<string, float>> _emotionValues = new();
         private string[] _blendShapeNames = new string[0];
@@ -39,7 +55,7 @@ namespace VEA.Editor
 
         private void OnEnable()
         {
-            foreach (var emotion in EmotionNames)
+            foreach (var emotion in FullEmotions)
                 _emotionValues[emotion] = new Dictionary<string, float>();
         }
 
@@ -75,6 +91,12 @@ namespace VEA.Editor
             EditorGUILayout.HelpBox(
                 "各感情にBlendShapeを追加してスライダーで値を設定。\nプレビューでリアルタイム確認、Saveでアニメーションクリップに書き込みます。",
                 MessageType.Info);
+            EditorGUI.BeginChangeCheck();
+            _fullMode = EditorGUILayout.Toggle("Full Mode (7 emotions)", _fullMode);
+            if (EditorGUI.EndChangeCheck())
+            {
+                _selectedEmotion = Mathf.Min(_selectedEmotion, EmotionNames.Length - 1);
+            }
         }
 
         private void DrawAvatarSelection()
@@ -380,6 +402,19 @@ namespace VEA.Editor
                 { "mouth_o_1", 100f },
             };
             _emotionValues["Neutral"] = new Dictionary<string, float>();
+            _emotionValues["Disgust"] = new Dictionary<string, float>
+            {
+                { "eye_zito_1", 100f },
+                { "eyebrow_seriously_1", 100f },
+                { "mouth_straight", 80f },
+            };
+            _emotionValues["Fear"] = new Dictionary<string, float>
+            {
+                { "eye_surprised", 80f },
+                { "eyebrow_confuse_1", 100f },
+                { "mouth_o_1", 60f },
+                { "extra_sweat", 100f },
+            };
 
             if (_isPreviewing) ApplyPreview();
             Repaint();
@@ -400,7 +435,7 @@ namespace VEA.Editor
 
         private void LoadExistingClips()
         {
-            foreach (var emotion in EmotionNames)
+            foreach (var emotion in FullEmotions)
             {
                 _emotionValues[emotion] = new Dictionary<string, float>();
                 string clipPath = $"{_animFolder}/VEA_{emotion}.anim";

@@ -17,7 +17,7 @@ namespace VEA.Editor
         private Vector2 _scrollPos;
 
         private static readonly string[] SimpleEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Neutral" };
-        private static readonly string[] FullEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Neutral", "Disgust", "Fear" };
+        private static readonly string[] FullEmotions = { "Joy", "Anger", "Sadness", "Surprise", "Disgust", "Fear", "Neutral" };
         private const string ParameterPrefix = "VEA";
         private const string VEA_OBJECT_NAME = "VEA_EmotionSystem";
 
