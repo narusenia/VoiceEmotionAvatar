@@ -333,8 +333,17 @@ namespace VEA.Editor
             AssetDatabase.SaveAssets();
         }
 
+        private float[] _savedWeights;
+
         private void StartPreview()
         {
+            if (_faceMesh != null && _faceMesh.sharedMesh != null)
+            {
+                int count = _faceMesh.sharedMesh.blendShapeCount;
+                _savedWeights = new float[count];
+                for (int i = 0; i < count; i++)
+                    _savedWeights[i] = _faceMesh.GetBlendShapeWeight(i);
+            }
             _isPreviewing = true;
             ApplyPreview();
         }
@@ -346,8 +355,12 @@ namespace VEA.Editor
 
             if (_faceMesh == null || _faceMesh.sharedMesh == null) return;
 
-            for (int i = 0; i < _faceMesh.sharedMesh.blendShapeCount; i++)
-                _faceMesh.SetBlendShapeWeight(i, 0);
+            if (_savedWeights != null)
+            {
+                for (int i = 0; i < _savedWeights.Length && i < _faceMesh.sharedMesh.blendShapeCount; i++)
+                    _faceMesh.SetBlendShapeWeight(i, _savedWeights[i]);
+                _savedWeights = null;
+            }
 
             SceneView.RepaintAll();
         }
