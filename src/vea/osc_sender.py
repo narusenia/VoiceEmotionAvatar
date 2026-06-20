@@ -18,11 +18,13 @@ class OscSender:
 
     def connect(self) -> None:
         self._client = SimpleUDPClient(self._ip, self._port)
+        self._send_count = 0
         logger.info("OSC client connected to %s:%d", self._ip, self._port)
 
     def send(self, scores: dict[str, float]) -> None:
         if self._client is None:
             return
+        self._send_count += 1
         for emotion in VEA_EMOTIONS:
             value = scores.get(emotion, 0.0)
             address = f"/avatar/parameters/{self._prefix}_{emotion.capitalize()}"
@@ -30,6 +32,9 @@ class OscSender:
                 self._client.send_message(address, float(value))
             except Exception as e:
                 logger.error("OSC send error (%s): %s", address, e)
+        if self._send_count <= 3 or self._send_count % 40 == 0:
+            parts = " ".join(f"{e[:3]}={scores.get(e, 0):.2f}" for e in VEA_EMOTIONS)
+            logger.info("OSC sent → %s:%d | %s", self._ip, self._port, parts)
 
     def update_target(self, ip: str, port: int) -> None:
         self._ip = ip
