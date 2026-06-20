@@ -176,6 +176,9 @@ class VeaApp:
     def _on_instant_threshold_change(self, value: float) -> None:
         self._smoother.set_instant_threshold(value)
 
+    def _on_instant_smoothing_change(self, value: float) -> None:
+        self._smoother.set_instant_smoothing(value)
+
     def _on_osc_change(self, ip: str, port: int) -> None:
         self._osc.update_target(ip, port)
         self._config.osc.ip = ip
@@ -198,6 +201,7 @@ class VeaApp:
             on_gain_change=self._on_gain_change,
             on_instant_mode_change=self._on_instant_mode_change,
             on_instant_threshold_change=self._on_instant_threshold_change,
+            on_instant_smoothing_change=self._on_instant_smoothing_change,
         )
         self._gui.setup(
             default_device=self._config.audio.device,

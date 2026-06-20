@@ -43,6 +43,7 @@ class VeaGui:
         self._on_gain_change: Callable[[float], None] | None = None
         self._on_instant_mode_change: Callable[[bool], None] | None = None
         self._on_instant_threshold_change: Callable[[float], None] | None = None
+        self._on_instant_smoothing_change: Callable[[float], None] | None = None
         self._running = False
         self._devices: list[dict] = []
 
@@ -58,6 +59,7 @@ class VeaGui:
         on_gain_change: Callable[[float], None] | None = None,
         on_instant_mode_change: Callable[[bool], None] | None = None,
         on_instant_threshold_change: Callable[[float], None] | None = None,
+        on_instant_smoothing_change: Callable[[float], None] | None = None,
     ) -> None:
         self._on_device_change = on_device_change
         self._on_start = on_start
@@ -69,6 +71,7 @@ class VeaGui:
         self._on_gain_change = on_gain_change
         self._on_instant_mode_change = on_instant_mode_change
         self._on_instant_threshold_change = on_instant_threshold_change
+        self._on_instant_smoothing_change = on_instant_smoothing_change
 
     def _build_ui(
         self,
@@ -167,6 +170,15 @@ class VeaGui:
                 callback=self._on_instant_threshold_slider,
                 width=200,
                 tag="instant_threshold_slider",
+            )
+            dpg.add_slider_float(
+                label="Smoothing",
+                default_value=0.5,
+                min_value=0.05,
+                max_value=1.0,
+                callback=self._on_instant_smoothing_slider,
+                width=200,
+                tag="instant_smoothing_slider",
             )
 
             dpg.add_separator()
@@ -270,6 +282,10 @@ class VeaGui:
     def _on_instant_threshold_slider(self, sender, value, user_data) -> None:
         if self._on_instant_threshold_change:
             self._on_instant_threshold_change(value)
+
+    def _on_instant_smoothing_slider(self, sender, value, user_data) -> None:
+        if self._on_instant_smoothing_change:
+            self._on_instant_smoothing_change(value)
 
     def _on_osc_apply(self, sender, value, user_data) -> None:
         ip = dpg.get_value("osc_ip_input")

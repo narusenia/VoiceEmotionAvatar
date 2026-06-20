@@ -9,6 +9,7 @@ class EmotionSmoother:
         self._hysteresis = hysteresis_threshold
         self._instant_mode = False
         self._instant_threshold = 0.4
+        self._instant_smoothing = 0.5
         self._current: dict[str, float] = {e: 0.0 for e in VEA_EMOTIONS}
         self._current["neutral"] = 1.0
         self._dominant: str = "neutral"
@@ -27,12 +28,14 @@ class EmotionSmoother:
         if self._instant_mode:
             if raw_scores[new_dominant] >= self._instant_threshold:
                 self._dominant = new_dominant
-                self._current = {e: 0.0 for e in VEA_EMOTIONS}
-                self._current[new_dominant] = 1.0
+                target = {e: 0.0 for e in VEA_EMOTIONS}
+                target[new_dominant] = 1.0
             else:
                 self._dominant = "neutral"
-                self._current = {e: 0.0 for e in VEA_EMOTIONS}
-                self._current["neutral"] = 1.0
+                target = {e: 0.0 for e in VEA_EMOTIONS}
+                target["neutral"] = 1.0
+            for emotion in VEA_EMOTIONS:
+                self._current[emotion] += (target[emotion] - self._current[emotion]) * self._instant_smoothing
             return self._current.copy()
 
         if new_dominant != self._dominant:
@@ -61,6 +64,9 @@ class EmotionSmoother:
 
     def set_instant_threshold(self, threshold: float) -> None:
         self._instant_threshold = max(0.1, min(0.9, threshold))
+
+    def set_instant_smoothing(self, value: float) -> None:
+        self._instant_smoothing = max(0.05, min(1.0, value))
 
     def reset(self) -> None:
         self._current = {e: 0.0 for e in VEA_EMOTIONS}
