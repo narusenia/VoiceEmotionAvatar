@@ -299,13 +299,6 @@ namespace VEA.Editor
             GUI.backgroundColor = prevBg;
 
             EditorGUILayout.EndHorizontal();
-
-            // プリセット
-            EditorGUILayout.Space(5);
-            if (GUILayout.Button("Milfy 推奨プリセットを読み込み"))
-            {
-                LoadMilfyPreset();
-            }
         }
 
         private void SaveClip(string emotion)
@@ -386,51 +379,6 @@ namespace VEA.Editor
             }
 
             SceneView.RepaintAll();
-        }
-
-        private void LoadMilfyPreset()
-        {
-            _emotionValues["Joy"] = new Dictionary<string, float>
-            {
-                { "eye_smile_1", 100f },
-                { "mouth_smile_2", 100f },
-                { "eyebrow_happy", 100f },
-            };
-            _emotionValues["Anger"] = new Dictionary<string, float>
-            {
-                { "eye_angry", 100f },
-                { "eyebrow_angry", 100f },
-                { "mouth_angry", 100f },
-            };
-            _emotionValues["Sadness"] = new Dictionary<string, float>
-            {
-                { "eye_sad", 100f },
-                { "eyebrow_sad", 100f },
-                { "mouth_straight", 100f },
-            };
-            _emotionValues["Surprise"] = new Dictionary<string, float>
-            {
-                { "eye_surprised", 100f },
-                { "eyebrow_surprised", 100f },
-                { "mouth_o_1", 100f },
-            };
-            _emotionValues["Neutral"] = new Dictionary<string, float>();
-            _emotionValues["Disgust"] = new Dictionary<string, float>
-            {
-                { "eye_zito_1", 100f },
-                { "eyebrow_seriously_1", 100f },
-                { "mouth_straight", 80f },
-            };
-            _emotionValues["Fear"] = new Dictionary<string, float>
-            {
-                { "eye_surprised", 80f },
-                { "eyebrow_confuse_1", 100f },
-                { "mouth_o_1", 60f },
-                { "extra_sweat", 100f },
-            };
-
-            if (_isPreviewing) ApplyPreview();
-            Repaint();
         }
 
         private static string GetRelativePath(Transform root, Transform target)
