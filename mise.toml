@@ -9,3 +9,7 @@ run = "uv sync"
 depends = ["sync"]
 description = "Run the application"
 run = "uv run vea"
+
+[tasks.package]
+description = "Build the Unity .unitypackage (no Unity required)"
+run = "python scripts/build_unitypackage.py"
