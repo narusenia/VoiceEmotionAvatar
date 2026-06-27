@@ -1,0 +1,7 @@
+# Windows batch files must keep CRLF or cmd.exe mis-parses them.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Unity meta/asset text files use LF.
+*.cs text eol=lf
+*.meta text eol=lf
