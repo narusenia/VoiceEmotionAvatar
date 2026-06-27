@@ -13,6 +13,7 @@ namespace VEA.Editor
         private string _faceMeshPath;
         private string _animFolder = "Assets/VEA/Generated/Animations";
         private Vector2 _scrollPos;
+        private Vector2 _addScrollPos;
         private int _selectedEmotion;
         private string _searchFilter = "";
         private bool _isPreviewing;
@@ -236,7 +237,18 @@ namespace VEA.Editor
             // BlendShape追加セクション
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("BlendShape を追加", EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
             _searchFilter = EditorGUILayout.TextField("検索", _searchFilter);
+            using (new EditorGUI.DisabledScope(string.IsNullOrEmpty(_searchFilter)))
+            {
+                if (GUILayout.Button("×", GUILayout.Width(22)))
+                {
+                    _searchFilter = "";
+                    GUI.FocusControl(null);
+                }
+            }
+            EditorGUILayout.EndHorizontal();
 
             if (_blendShapeNames.Length > 0)
             {
@@ -246,21 +258,34 @@ namespace VEA.Editor
                                 n.ToLower().Contains(_searchFilter.ToLower()))
                     .ToArray();
 
-                int displayCount = Mathf.Min(filtered.Length, 30);
-                if (filtered.Length > 30)
-                    EditorGUILayout.LabelField($"  {filtered.Length} 件中 30件表示（検索で絞り込めます）",
-                        EditorStyles.miniLabel);
+                EditorGUILayout.LabelField(
+                    $"  追加可能: {filtered.Length} 件 / 全 {_blendShapeNames.Length} 件",
+                    EditorStyles.miniLabel);
 
-                for (int i = 0; i < displayCount; i++)
+                if (filtered.Length == 0)
                 {
-                    EditorGUILayout.BeginHorizontal();
-                    EditorGUILayout.LabelField(filtered[i], GUILayout.Width(250));
-                    if (GUILayout.Button("+ 追加", GUILayout.Width(60)))
+                    EditorGUILayout.LabelField("  該当なし", EditorStyles.miniLabel);
+                }
+                else
+                {
+                    // 候補は専用スクロールビューで全件表示（多くてもウィンドウが膨らまない）
+                    float listHeight = Mathf.Clamp(filtered.Length * 20f + 6f, 40f, 320f);
+                    _addScrollPos = EditorGUILayout.BeginScrollView(
+                        _addScrollPos, GUILayout.Height(listHeight));
+
+                    foreach (var name in filtered)
                     {
-                        values[filtered[i]] = 100f;
-                        if (_isPreviewing) ApplyPreview();
+                        EditorGUILayout.BeginHorizontal();
+                        EditorGUILayout.LabelField(name, GUILayout.Width(250));
+                        if (GUILayout.Button("+ 追加", GUILayout.Width(60)))
+                        {
+                            values[name] = 100f;
+                            if (_isPreviewing) ApplyPreview();
+                        }
+                        EditorGUILayout.EndHorizontal();
                     }
-                    EditorGUILayout.EndHorizontal();
+
+                    EditorGUILayout.EndScrollView();
                 }
             }
         }
