@@ -13,3 +13,15 @@ run = "uv run vea"
 [tasks.package]
 description = "Build the Unity .unitypackage (no Unity required)"
 run = "python scripts/build_unitypackage.py"
+
+[tasks.clean]
+description = "Remove build artifacts and Python caches (.venv, dist, build, __pycache__)"
+run = "python scripts/clean.py"
+
+[tasks.lint]
+description = "Lint with ruff"
+run = "uvx ruff check ."
+
+[tasks.fmt]
+description = "Format with ruff"
+run = "uvx ruff format ."
