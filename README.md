@@ -25,28 +25,31 @@ VRChatでリアルタイムに音声の感情をAIで判別し、アバターの
 
 ## セットアップ
 
-### 1. uv のインストール
+### かんたん起動（推奨）
+
+`start.bat` をダブルクリックするだけ。**Python や uv を事前にインストールする必要はない。**
+
+初回起動時に以下を自動で取得する（ネットワーク接続が必要）:
+
+1. **uv**（環境マネージャ、約30MB）— 無ければ `./.uv/` に自動ダウンロード
+2. **Python 3.12 + PyTorch(CUDA12.4) ほか依存**（約2.5GB）— uv が `./.venv/` に構築
+3. **emotion2vec モデル**（初回推論時、数百MB）
+
+2回目以降はそのまま起動する。初回のみ合計数GBのDLがあるため時間がかかる。
+
+### 手動 / 開発者向け
+
+uv を導入済みなら直接操作できる:
+
+```bash
+uv sync        # 依存環境を構築（または setup.bat）
+uv run vea     # 起動（または start.bat）
+```
+
+uv 自体のインストール:
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-### 2. 依存パッケージのインストール
-
-`setup.bat` をダブルクリック、または:
-
-```bash
-uv sync --python 3.12
-```
-
-初回は PyTorch (~2.5GB) と emotion2vec モデルのダウンロードがあるため時間がかかる。
-
-### 3. 起動
-
-`start.bat` をダブルクリック、または:
-
-```bash
-uv run vea
 ```
 
 ## VRChat側の設定
@@ -174,14 +177,16 @@ VoiceEmotionAvatar/
 │   ├── VeaBlendShapeEditor.cs # 感情アニメーション BlendShape 編集 GUI
 │   └── VeaDebugTest.cs        # BlendShape 直接テスト / テスト用 FX 差し替え
 ├── scripts/
-│   └── build_unitypackage.py  # .unitypackage ビルド（Unity 不要）
+│   ├── build_unitypackage.py  # .unitypackage ビルド（Unity 不要）
+│   └── ensure_uv.bat     # uv を解決（無ければ自動DL）
 ├── .github/workflows/
 │   └── release.yml       # tag push で .unitypackage を Release に添付
 ├── docs/
 │   ├── requirements.md   # 要件定義書
 │   └── implementation-plan.md  # 実装計画書
-├── setup.bat             # 環境構築用バッチファイル
-├── start.bat             # 起動用バッチファイル
+├── .python-version       # 使用 Python バージョン (3.12)
+├── setup.bat             # 依存環境の事前準備（任意）
+├── start.bat             # ワンクリック起動（uv→Python→依存を自動準備）
 ├── build_unitypackage.bat # unitypackage ビルド用バッチファイル
 └── pyproject.toml        # uv / Python プロジェクト設定
 ```
