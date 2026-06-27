@@ -1,0 +1,11 @@
+[tools]
+uv = "latest"
+
+[tasks.sync]
+description = "Sync dependencies"
+run = "uv sync"
+
+[tasks.app]
+depends = ["sync"]
+description = "Run the application"
+run = "uv run vea"
