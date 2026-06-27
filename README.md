@@ -69,7 +69,19 @@ FX Animator Controller に `VEA_Emotions` レイヤーを追加し、Direct Blen
 
 ### Unity Editor スクリプト
 
-`unity/Editor/` にエディタツールが同梱されている。Unity プロジェクトの `Assets/VEA/Editor/` にコピーして使う。
+エディタツールを Unity プロジェクトに導入する方法は2通り。
+
+**A. unitypackage で導入（推奨）**
+
+[Releases](https://github.com/narusenia/VoiceEmotionAvatar/releases) から `VEA-vX.Y.Z.unitypackage` をダウンロードし、Unity にドラッグ＆ドロップでインポートする。`Assets/VEA/Editor/` に展開される。
+
+> 利用には VRChat SDK3 (Avatars) と [Modular Avatar](https://modular-avatar.nadena.dev/) がプロジェクトに導入済みであること。
+
+**B. ソースから手動コピー**
+
+`unity/Assets/VEA/Editor/` の中身を Unity プロジェクトの `Assets/VEA/Editor/` にコピーする。
+
+導入後、以下のメニューが使えるようになる:
 
 - **Tools → VEA → Setup with Modular Avatar** (推奨): MA Merge Animator で非破壊セットアップ。Face-Emo 等と干渉しない
 - **Tools → VEA → Setup Avatar**: Expression Parameters と FX レイヤーの直接セットアップ（MA未使用時）
@@ -156,17 +168,45 @@ VoiceEmotionAvatar/
 │   ├── osc_sender.py     # VRChat への OSC パラメータ送信
 │   ├── gui.py            # Dear PyGui による GUI
 │   └── config.py         # YAML 設定管理
-├── unity/Editor/
+├── unity/Assets/VEA/Editor/    # Unity プロジェクト構造でミラー（.meta 付き）
 │   ├── VeaSetupWindow.cs      # Expression Parameters / FX レイヤー自動セットアップ
+│   ├── VeaMaSetup.cs          # Modular Avatar 非破壊セットアップ
 │   ├── VeaBlendShapeEditor.cs # 感情アニメーション BlendShape 編集 GUI
 │   └── VeaDebugTest.cs        # BlendShape 直接テスト / テスト用 FX 差し替え
+├── scripts/
+│   └── build_unitypackage.py  # .unitypackage ビルド（Unity 不要）
+├── .github/workflows/
+│   └── release.yml       # tag push で .unitypackage を Release に添付
 ├── docs/
 │   ├── requirements.md   # 要件定義書
 │   └── implementation-plan.md  # 実装計画書
 ├── setup.bat             # 環境構築用バッチファイル
 ├── start.bat             # 起動用バッチファイル
+├── build_unitypackage.bat # unitypackage ビルド用バッチファイル
 └── pyproject.toml        # uv / Python プロジェクト設定
 ```
+
+## unitypackage のビルド
+
+Unity をインストールしていなくても `.unitypackage` を生成できる（中身は gzip + tar のため、コミット済みの `.meta`/GUID からスクリプトで構築する）。
+
+```bash
+# いずれか
+python scripts/build_unitypackage.py   # → dist/VEA.unitypackage
+mise run package
+# Windows: build_unitypackage.bat をダブルクリック
+```
+
+### リリース（CI）
+
+`v` で始まるタグを push すると GitHub Actions が `.unitypackage` をビルドし、GitHub Release に自動添付する。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+手動実行（Actions タブの "Build & Release unitypackage" → Run workflow）の場合は Release は作らず、ワークフローの artifact としてダウンロードできる。
 
 ## 依存ライブラリ
 
