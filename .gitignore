@@ -1,24 +1,46 @@
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
-*.egg-info/
-dist/
-build/
 *.egg
+*.egg-info/
 
+# --- Build / output ---
+build/
+dist/
+*.unitypackage
+
+# --- uv / virtualenv ---
 .venv/
-.env
 .uv/
+.env
+# uv.lock is intentionally not committed (resolved per environment).
+# For reproducible installs, remove the next line and commit the lock.
+uv.lock
 
+# --- Unity (generated when opening unity/ as a project; .meta files ARE tracked) ---
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Ll]ogs/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Mm]emoryCaptures/
+unity/.vs/
+unity/*.csproj
+unity/*.sln
+unity/*.userprefs
+
+# --- Audio samples ---
 *.wav
 *.mp3
 
+# --- App config (user config lives in ~/.vea) ---
 config.yaml
 !config.default.yaml
 
+# --- Editors / OS ---
 .idea/
 .vscode/
 *.swp
 *.swo
-
-uv.lock
